@@ -43,7 +43,6 @@ class JogoPalavrasUI(QMainWindow):
 
     def _configurar_janela(self):
         self.setWindowTitle(self.titulo)
-        self.setMinimumSize(460, 620)
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #121213;
@@ -86,16 +85,17 @@ class JogoPalavrasUI(QMainWindow):
 
         layout_topo.addStretch()
 
-        lbl_dificuldade = QLabel("Dificuldade:")
+        lbl_dificuldade = QLabel("Letras:")
         lbl_dificuldade.setFont(QFont("Segoe UI", 11))
         layout_topo.addWidget(lbl_dificuldade)
 
         self.combo_dificuldade = QComboBox()
-        self.combo_dificuldade.addItem("4 letras (Fácil)", 4)
-        self.combo_dificuldade.addItem("5 letras (Normal)", 5)
-        self.combo_dificuldade.addItem("6 letras (Difícil)", 6)
-        self.combo_dificuldade.addItem("7 letras (Mestre)", 7)
-        self.combo_dificuldade.setCurrentIndex(1)  # Padrão: 5 letras
+
+        range_dificuldade = (1, 19)
+        
+        for i in range(range_dificuldade[0], range_dificuldade[1] + 1):
+            self.combo_dificuldade.addItem(str(i), i)
+        self.combo_dificuldade.setCurrentIndex(4)  # Padrão: 5 letras
         self.combo_dificuldade.currentIndexChanged.connect(self.iniciar_novo_jogo)
         layout_topo.addWidget(self.combo_dificuldade)
 
@@ -195,6 +195,8 @@ class JogoPalavrasUI(QMainWindow):
         finally:
             self.btn_novo_jogo.setEnabled(True)
             self.btn_novo_jogo.setText(texto_original)
+
+        self.adjustSize()
 
     @staticmethod
     def _estilo_celula(cor_fundo: str, cor_borda: str) -> str:

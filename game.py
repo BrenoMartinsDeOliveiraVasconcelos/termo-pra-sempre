@@ -20,7 +20,10 @@ class Palavra():
     def _carregar_palavras(self):
         with open(self.arquivo, "r", encoding="utf-8") as f:
             palavras = f.read().splitlines()
-        return [palavra.lower() for palavra in palavras if len(self._tirar_acentos(palavra)) == self.tamanho]
+        l_palavras = [palavra.lower() for palavra in palavras if len(self._tirar_acentos(palavra)) == self.tamanho]
+        print(f"Numero total: {len(l_palavras)}")
+
+        return l_palavras
 
 
     def _tirar_acentos(self, palavra: str) -> str:
@@ -49,28 +52,28 @@ class Palavra():
         return cache.get(palavra, None)
         
 
-    def get_palavra_aleatoria(self) -> str:
+    def get_palavra_aleatoria(self, tentativa: int=1) -> str:
+        print(f"Tentativa #{tentativa} de sortear palavra...")
         self.palavra_atual = random.choice(self.lista_palavras)
 
         try:
             if self._verificar_cache(self.palavra_atual) is not None:
                 is_substantivo = self._verificar_cache(self.palavra_atual)
                 if not is_substantivo:
-                    print(f"A palavra '{self.palavra_atual}' não é um substantivo (cache). Selecionando outra palavra...")
-                    return self.get_palavra_aleatoria()
+                    return self.get_palavra_aleatoria(tentativa=tentativa+1)
             else:
                 req = helpers.request(self.palavra_atual)
                 xml_list = helpers.get_xml_camp(req)
 
                 if not any(helpers.is_substantivo(xml) for xml in xml_list):
-                    print(f"A palavra '{self.palavra_atual}' não é um substantivo. Selecionando outra palavra...")
                     self._atualizar_cache(self.palavra_atual, False)
-                    return self.get_palavra_aleatoria()
+                    return self.get_palavra_aleatoria(tentativa=tentativa+1)
                 else:
                     self._atualizar_cache(self.palavra_atual, True)
         except (ConnectionError, requests.exceptions.RequestException):
             print("Erro de conexão. Continuando com a palavra selecionada.")  # Se houver um erro de conexão, apenas continue com a palavra selecionada
 
+        print("Palavra sorteada com sucesso!")
         return self.palavra_atual
 
 

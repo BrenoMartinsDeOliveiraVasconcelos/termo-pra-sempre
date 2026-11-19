@@ -28,6 +28,7 @@ class JogoPalavrasUI(QMainWindow):
     def __init__(self, arquivo_palavras: str = "lista.txt", max_tentativas: int = 6):
         super().__init__()
         self.arquivo_palavras = arquivo_palavras
+        self.arquivo_cache = "cache.json"
         self.max_tentativas = max_tentativas
 
         self.jogo: Palavra | None = None
@@ -171,7 +172,7 @@ class JogoPalavrasUI(QMainWindow):
         tamanho = self.combo_dificuldade.currentData()
 
         try:
-            self.jogo = Palavra(self.arquivo_palavras, tamanho)
+            self.jogo = Palavra(self.arquivo_palavras, self.arquivo_cache, tamanho)
             if not self.jogo.lista_palavras:
                 raise ValueError(f"Nenhuma palavra com {tamanho} letras encontrada em '{self.arquivo_palavras}'.")
             self.jogo.get_palavra_aleatoria()
@@ -258,4 +259,3 @@ if __name__ == "__main__":
     janela = JogoPalavrasUI(arquivo_palavras="lista.txt", max_tentativas=6)
     janela.show()
     sys.exit(app.exec())
-    

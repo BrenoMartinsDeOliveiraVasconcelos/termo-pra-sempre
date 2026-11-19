@@ -2,14 +2,19 @@ import random
 import unicodedata
 import helpers
 import requests
+import json
+import os
 
 class Palavra():
-    def __init__(self, arquivo: str, tamanho: int):
+    def __init__(self, arquivo: str, cache: str, tamanho: int):
         self.arquivo = arquivo
+        self.cache = cache
         self.tamanho = tamanho
 
         self.lista_palavras = self._carregar_palavras()
         self.lista_palavras_sa = [self._tirar_acentos(palavra) for palavra in self.lista_palavras]
+
+        self._gerar_cache()
 
     
     def _carregar_palavras(self):
@@ -23,17 +28,47 @@ class Palavra():
         return ''.join([c for c in nfkd if not unicodedata.combining(c)])
 
 
+    def _gerar_cache(self):
+        if not os.path.exists(self.cache):
+            with open(self.cache, "w+", encoding="utf-8") as f:
+                json.dump({}, f)
+
+
+    def _atualizar_cache(self, palavra: str, is_substantivo: bool):
+        with open(self.cache, "r+", encoding="utf-8") as f:
+            cache_data = json.load(f)
+            cache_data[palavra] = is_substantivo
+            f.seek(0)
+            json.dump(cache_data, f, ensure_ascii=False, indent=4)
+            f.truncate()
+
+
+    def _verificar_cache(self, palavra: str) -> bool | None:
+        cache = json.load(open(self.cache, "r", encoding="utf-8"))
+
+        return cache.get(palavra, None)
+        
+
     def get_palavra_aleatoria(self) -> str:
         self.palavra_atual = random.choice(self.lista_palavras)
         print(f"Palavra selecionada: {self.palavra_atual}") 
 
         try:
-            req = helpers.request(self.palavra_atual)
-            xml_list = helpers.get_xml_camp(req)
+            if self._verificar_cache(self.palavra_atual) is not None:
+                is_substantivo = self._verificar_cache(self.palavra_atual)
+                if not is_substantivo:
+                    print(f"A palavra '{self.palavra_atual}' não é um substantivo (cache). Selecionando outra palavra...")
+                    return self.get_palavra_aleatoria()
+            else:
+                req = helpers.request(self.palavra_atual)
+                xml_list = helpers.get_xml_camp(req)
 
-            if not any(helpers.is_substantivo(xml) for xml in xml_list):
-                print(f"A palavra '{self.palavra_atual}' não é um substantivo. Selecionando outra palavra...")
-                return self.get_palavra_aleatoria()
+                if not any(helpers.is_substantivo(xml) for xml in xml_list):
+                    print(f"A palavra '{self.palavra_atual}' não é um substantivo. Selecionando outra palavra...")
+                    self._atualizar_cache(self.palavra_atual, False)
+                    return self.get_palavra_aleatoria()
+                else:
+                    self._atualizar_cache(self.palavra_atual, True)
         except (ConnectionError, requests.exceptions.RequestException):
             print("Erro de conexão. Continuando com a palavra selecionada.")  # Se houver um erro de conexão, apenas continue com a palavra selecionada
 

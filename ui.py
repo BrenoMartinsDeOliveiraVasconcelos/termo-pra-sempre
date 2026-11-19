@@ -29,6 +29,7 @@ class JogoPalavrasUI(QMainWindow):
         super().__init__()
         self.arquivo_palavras = arquivo_palavras
         self.arquivo_cache = "cache.json"
+        self.titulo = "Termo"
         self.max_tentativas = max_tentativas
 
         self.jogo: Palavra | None = None
@@ -41,7 +42,7 @@ class JogoPalavrasUI(QMainWindow):
         self.iniciar_novo_jogo()
 
     def _configurar_janela(self):
-        self.setWindowTitle("Jogo de Palavras")
+        self.setWindowTitle(self.titulo)
         self.setMinimumSize(460, 620)
         self.setStyleSheet("""
             QMainWindow {
@@ -136,11 +137,13 @@ class JogoPalavrasUI(QMainWindow):
         self.layout_principal.addLayout(layout_entrada)
 
     def _construir_grade(self, tamanho_palavra: int):
-        # Remove células anteriores ao trocar de dificuldade
         while self.layout_grade.count():
             item = self.layout_grade.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            widget = item.widget()
+            if widget:
+                widget.hide()
+                widget.setParent(None)
+                widget.deleteLater()
 
         self.celulas = []
         tamanho_celula = 58 if tamanho_palavra <= 5 else 48
@@ -157,6 +160,42 @@ class JogoPalavrasUI(QMainWindow):
                 linha_celulas.append(celula)
             self.celulas.append(linha_celulas)
 
+    def iniciar_novo_jogo(self):
+        texto_original = "Novo Jogo"
+        self.btn_novo_jogo.setEnabled(False)
+        self.btn_novo_jogo.setText("Carregando...")
+        QApplication.processEvents()  # Força a atualização visual antes do carregamento
+
+        tamanho = self.combo_dificuldade.currentData()
+
+        try:
+            self.jogo = Palavra(self.arquivo_palavras, self.arquivo_cache, tamanho)
+            if not self.jogo.lista_palavras:
+                raise ValueError(f"Nenhuma palavra com {tamanho} letras encontrada em '{self.arquivo_palavras}'.")
+            self.jogo.get_palavra_aleatoria()
+
+            self.tentativa_atual = 0
+            self.jogo_encerrado = False
+            self._construir_grade(tamanho)
+
+            self.lbl_status.setText(f"Adivinhe a palavra de {tamanho} letras ({self.max_tentativas} tentativas).")
+            self.lbl_status.setStyleSheet("color: #d7dadc;")
+
+            self.input_palpite.clear()
+            self.input_palpite.setMaxLength(tamanho)
+            self.input_palpite.setEnabled(True)
+            self.btn_enviar.setEnabled(True)
+            self.input_palpite.setFocus()
+
+        except (FileNotFoundError, ValueError) as erro:
+            QMessageBox.critical(self, "Erro ao carregar palavras", str(erro))
+            self.input_palpite.setEnabled(False)
+            self.btn_enviar.setEnabled(False)
+
+        finally:
+            self.btn_novo_jogo.setEnabled(True)
+            self.btn_novo_jogo.setText(texto_original)
+
     @staticmethod
     def _estilo_celula(cor_fundo: str, cor_borda: str) -> str:
         return f"""
@@ -167,33 +206,6 @@ class JogoPalavrasUI(QMainWindow):
                 color: #ffffff;
             }}
         """
-
-    def iniciar_novo_jogo(self):
-        tamanho = self.combo_dificuldade.currentData()
-
-        try:
-            self.jogo = Palavra(self.arquivo_palavras, self.arquivo_cache, tamanho)
-            if not self.jogo.lista_palavras:
-                raise ValueError(f"Nenhuma palavra com {tamanho} letras encontrada em '{self.arquivo_palavras}'.")
-            self.jogo.get_palavra_aleatoria()
-        except (FileNotFoundError, ValueError) as erro:
-            QMessageBox.critical(self, "Erro ao carregar palavras", str(erro))
-            self.input_palpite.setEnabled(False)
-            self.btn_enviar.setEnabled(False)
-            return
-
-        self.tentativa_atual = 0
-        self.jogo_encerrado = False
-        self._construir_grade(tamanho)
-
-        self.lbl_status.setText(f"Adivinhe a palavra de {tamanho} letras ({self.max_tentativas} tentativas).")
-        self.lbl_status.setStyleSheet("color: #d7dadc;")
-
-        self.input_palpite.clear()
-        self.input_palpite.setMaxLength(tamanho)
-        self.input_palpite.setEnabled(True)
-        self.btn_enviar.setEnabled(True)
-        self.input_palpite.setFocus()
 
     def _atualizar_linha_digitacao(self, texto: str):
         if self.jogo_encerrado or self.jogo is None:

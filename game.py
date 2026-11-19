@@ -51,7 +51,6 @@ class Palavra():
 
     def get_palavra_aleatoria(self) -> str:
         self.palavra_atual = random.choice(self.lista_palavras)
-        print(f"Palavra selecionada: {self.palavra_atual}") 
 
         try:
             if self._verificar_cache(self.palavra_atual) is not None:
@@ -81,19 +80,19 @@ class Palavra():
         palavra_atual = self._tirar_acentos(self.palavra_atual)
         alvo = self._tirar_acentos(alvo)
 
-        letras_restantes = list(palavra_atual)
+        letras_restantes = [x for x in palavra_atual]
 
         for indice, char in enumerate(alvo):
             if char == palavra_atual[indice]:
                 resultado[indice] = 2
-                letras_restantes[indice] = None
+                letras_restantes[indice] = ""
             else:
                 resultado[indice] = 0
 
         for indice, char in enumerate(alvo):
             if resultado[indice] == 0 and char in letras_restantes:
                 resultado[indice] = 1
-                letras_restantes[letras_restantes.index(char)] = None
+                letras_restantes[letras_restantes.index(char)] = ""
 
         return resultado
 
@@ -107,9 +106,3 @@ class Palavra():
             raise ValueError("A palavra não está na lista de palavras válidas.")
 
         return self.comparar_palavras(palavra)
-
-
-if __name__ == "__main__":
-    palavra = Palavra("lista.txt", 5)
-    print(palavra.get_palavra_aleatoria())
-    print(palavra.chute("lápis"))

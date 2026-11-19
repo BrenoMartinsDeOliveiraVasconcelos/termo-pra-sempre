@@ -1,5 +1,7 @@
 import random
 import unicodedata
+import helpers
+import requests
 
 class Palavra():
     def __init__(self, arquivo: str, tamanho: int):
@@ -23,6 +25,18 @@ class Palavra():
 
     def get_palavra_aleatoria(self) -> str:
         self.palavra_atual = random.choice(self.lista_palavras)
+        print(f"Palavra selecionada: {self.palavra_atual}") 
+
+        try:
+            req = helpers.request(self.palavra_atual)
+            xml_list = helpers.get_xml_camp(req)
+
+            if not any(helpers.is_substantivo(xml) for xml in xml_list):
+                print(f"A palavra '{self.palavra_atual}' não é um substantivo. Selecionando outra palavra...")
+                return self.get_palavra_aleatoria()
+        except (ConnectionError, requests.exceptions.RequestException):
+            print("Erro de conexão. Continuando com a palavra selecionada.")  # Se houver um erro de conexão, apenas continue com a palavra selecionada
+
         return self.palavra_atual
 
 

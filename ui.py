@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -67,6 +67,10 @@ class JogoPalavrasUI(QMainWindow):
                 border-color: #3a3a3c;
             }
         """)
+
+    def _ajustar_janela(self):
+        self.layout_principal.activate()
+        self.adjustSize()
 
     def _criar_widgets(self):
         widget_central = QWidget()
@@ -137,28 +141,38 @@ class JogoPalavrasUI(QMainWindow):
         self.layout_principal.addLayout(layout_entrada)
 
     def _construir_grade(self, tamanho_palavra: int):
-        while self.layout_grade.count():
-            item = self.layout_grade.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.hide()
-                widget.setParent(None)
-                widget.deleteLater()
+            while self.layout_grade.count():
+                item = self.layout_grade.takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.hide()
+                    widget.setParent(None)
+                    widget.deleteLater()
 
-        self.celulas = []
-        tamanho_celula = 58 if tamanho_palavra <= 5 else 48
+            self.celulas = []
 
-        for linha in range(self.max_tentativas):
-            linha_celulas = []
-            for coluna in range(tamanho_palavra):
-                celula = QLabel("")
-                celula.setFixedSize(tamanho_celula, tamanho_celula)
-                celula.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                celula.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
-                celula.setStyleSheet(self._estilo_celula("#121213", "#3a3a3c"))
-                self.layout_grade.addWidget(celula, linha, coluna)
-                linha_celulas.append(celula)
-            self.celulas.append(linha_celulas)
+            tela = self.screen() or QApplication.primaryScreen()
+            largura_tela = int(tela.availableGeometry().width() * 0.85)
+
+            espacamento = self.layout_grade.spacing()  # 8px
+            margens_laterais = 48  # 24px de cada lado
+            espaco_util = largura_tela - margens_laterais - (espacamento * (tamanho_palavra - 1))
+
+            tamanho_ideal = 58 if tamanho_palavra <= 5 else 48
+            tamanho_celula = max(26, min(tamanho_ideal, espaco_util // tamanho_palavra))
+            tamanho_fonte = max(11, min(18, int(tamanho_celula * 0.38)))
+
+            for linha in range(self.max_tentativas):
+                linha_celulas = []
+                for coluna in range(tamanho_palavra):
+                    celula = QLabel("")
+                    celula.setFixedSize(tamanho_celula, tamanho_celula)
+                    celula.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    celula.setFont(QFont("Segoe UI", tamanho_fonte, QFont.Weight.Bold))
+                    celula.setStyleSheet(self._estilo_celula("#121213", "#3a3a3c"))
+                    self.layout_grade.addWidget(celula, linha, coluna)
+                    linha_celulas.append(celula)
+                self.celulas.append(linha_celulas)
 
     def iniciar_novo_jogo(self):
         texto_original = "Novo Jogo"
@@ -196,7 +210,7 @@ class JogoPalavrasUI(QMainWindow):
             self.btn_novo_jogo.setEnabled(True)
             self.btn_novo_jogo.setText(texto_original)
 
-        self.adjustSize()
+        QTimer.singleShot(0, self._ajustar_janela)
 
     @staticmethod
     def _estilo_celula(cor_fundo: str, cor_borda: str) -> str:

@@ -176,7 +176,7 @@ class JogoPalavrasUI(QMainWindow):
 
         string = f"Pontos: {self.pontos} ({self.vitorias}/{self.derrotas}) (Boost de {ratio if ratio > 1 else 1}x)"
         self.point_label.setText(string)
-        print(f"Pontos -> MUdança: {self.pontos-old_pontos})")
+        print(f"Pontos: {self.pontos} -> MUdança: {self.pontos-old_pontos})")
 
 
     def _construir_grade(self, tamanho_palavra: int):
@@ -280,6 +280,7 @@ class JogoPalavrasUI(QMainWindow):
     def enviar_palpite(self):
         pontos = 8*(2**len(str(self.pontos)))
 
+        print(f"Base: {pontos}")
         if self.jogo_encerrado or self.jogo is None:
             return
 
@@ -300,6 +301,7 @@ class JogoPalavrasUI(QMainWindow):
             linha[indice].setStyleSheet(self._estilo_celula(cor, cor))
 
             pontos = pontos+((2*(status))*(self.max_tentativas/(self.tentativa_atual+1)))
+            print(f"Pontos: {pontos}")
 
         self.tentativa_atual += 1
         self.input_palpite.clear()
@@ -312,6 +314,7 @@ class JogoPalavrasUI(QMainWindow):
             self.lbl_status.setStyleSheet("color: #6aaa64;")
             self._desabilitar_entrada()
             pontos = pontos + (self.pontos + (self.pontos/2)) - self.pontos
+            print(f"Pontos: {pontos}")
         elif self.tentativa_atual >= self.max_tentativas:
             self.derrotas += 1
             self.jogo_encerrado = True
@@ -319,6 +322,7 @@ class JogoPalavrasUI(QMainWindow):
             self.lbl_status.setStyleSheet("color: #ff6b6b;")
             self._desabilitar_entrada()
             pontos = pontos + (self.pontos - (self.pontos/1.25)) - self.pontos
+            print(f"Pontos: {pontos}")
         else:
             restantes = self.max_tentativas - self.tentativa_atual
             self.lbl_status.setText(f"Tentativas restantes: {restantes}")

@@ -182,7 +182,6 @@ class JogoPalavrasUI(QMainWindow):
             self.iniciar_novo_jogo()
 
     def _atualizar_pontos(self, valor_add: int, modo_set: bool = False):
-        ratio_cap = 4
         old_pontos = self.pontos
 
         if not modo_set:
@@ -193,16 +192,13 @@ class JogoPalavrasUI(QMainWindow):
         change = self.pontos - old_pontos
         ratio = self.vitorias / self.derrotas if self.derrotas > 0 else self.vitorias
 
-        if ratio > ratio_cap:
-            ratio = ratio_cap
-
         if change > 0 and ratio >= 1:
             if modo_set:
                 valor_add = change
 
-            self.pontos += round(valor_add * ratio)
+            self.pontos += round(valor_add)
 
-        string = f"Pontos: {self.pontos} ({self.vitorias}/{self.derrotas}) (Boost de {ratio if ratio > 1 else 1}x)"
+        string = f"Pontos: {self.pontos} ({self.vitorias}/{self.derrotas}) (Ratio: {ratio})"
         self.point_label.setText(string)
         print(f"Pontos: {self.pontos} -> MUdança: {self.pontos - old_pontos})")
 

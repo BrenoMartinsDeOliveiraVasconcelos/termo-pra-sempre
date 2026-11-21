@@ -216,7 +216,7 @@ class JogoPalavrasUI(QMainWindow):
     def iniciar_novo_jogo(self):
         texto_original = "Novo Jogo"
         self.btn_novo_jogo.setEnabled(False)
-        self.btn_novo_jogo.setText("Carregando...")
+        self.btn_novo_jogo.setText("Aguarde")
         QApplication.processEvents()  # Força a atualização visual antes do carregamento
 
         tamanho = self.combo_dificuldade.currentData()
@@ -278,7 +278,7 @@ class JogoPalavrasUI(QMainWindow):
                 celula.setStyleSheet(self._estilo_celula("#121213", "#3a3a3c"))
 
     def enviar_palpite(self):
-        pontos = 8
+        pontos = 8*(2**len(str(self.pontos)))
 
         if self.jogo_encerrado or self.jogo is None:
             return

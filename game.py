@@ -11,16 +11,20 @@ class Palavra():
         self.cache = cache
         self.tamanho = tamanho
 
-        self.lista_palavras = self._carregar_palavras()
+        self.lista_completa = self._carregar_completo()
+        self.lista_completa_sa = [self._tirar_acentos(palavra) for palavra in self.lista_completa]
+        self.lista_palavras = self._carregar_palavras(self.lista_completa)
         self.lista_palavras_sa = [self._tirar_acentos(palavra) for palavra in self.lista_palavras]
 
         self._gerar_cache()
 
+
+    def _carregar_completo(self):
+        return open(self.arquivo, "r", encoding="utf-8").read().splitlines()
+
     
-    def _carregar_palavras(self):
-        with open(self.arquivo, "r", encoding="utf-8") as f:
-            palavras = f.read().splitlines()
-        l_palavras = [palavra.lower() for palavra in palavras if len(self._tirar_acentos(palavra)) == self.tamanho]
+    def _carregar_palavras(self, lista: list):
+        l_palavras = [palavra.lower() for palavra in lista if len(self._tirar_acentos(palavra)) == self.tamanho]
         print(f"Numero total: {len(l_palavras)}")
 
         return l_palavras
@@ -58,17 +62,24 @@ class Palavra():
 
         try:
             if self._verificar_cache(self.palavra_atual) is not None:
+                print("Encontrado no cache... ", end="")
                 is_substantivo = self._verificar_cache(self.palavra_atual)
                 if not is_substantivo:
+                    print("Inválido.")
                     return self.get_palavra_aleatoria(tentativa=tentativa+1)
+                else:
+                    print("Válido.")
             else:
+                print("Não encontrado no cache. Checando na API...", end="")
                 req = helpers.request(self.palavra_atual)
                 xml_list = helpers.get_xml_camp(req)
 
                 if not any(helpers.is_substantivo(xml) for xml in xml_list):
                     self._atualizar_cache(self.palavra_atual, False)
+                    print("Inválido.")
                     return self.get_palavra_aleatoria(tentativa=tentativa+1)
                 else:
+                    print("Válido.")
                     self._atualizar_cache(self.palavra_atual, True)
         except (ConnectionError, requests.exceptions.RequestException):
             print("Erro de conexão. Continuando com a palavra selecionada.")  # Se houver um erro de conexão, apenas continue com a palavra selecionada
@@ -105,7 +116,7 @@ class Palavra():
         if len(self._tirar_acentos(palavra)) != self.tamanho:
             raise ValueError(f"A palavra deve ter {self.tamanho} letras.")
 
-        if self._tirar_acentos(palavra) not in self.lista_palavras_sa:
+        if self._tirar_acentos(palavra) not in self.lista_completa_sa:
             raise ValueError("A palavra não está na lista de palavras válidas.")
 
         return self.comparar_palavras(palavra)

@@ -154,6 +154,7 @@ class JogoPalavrasUI(QMainWindow):
 
 
     def _atualizar_pontos(self, valor_add: int, modo_set: bool=False):
+        ratio_cap = 4
         old_pontos = self.pontos
 
         if not modo_set:
@@ -163,6 +164,9 @@ class JogoPalavrasUI(QMainWindow):
 
         change = self.pontos-old_pontos
         ratio = self.vitorias/self.derrotas if self.derrotas > 0 else self.vitorias
+
+        if ratio > ratio_cap:
+            ratio = ratio_cap
 
         if change > 0 and ratio >= 1:
             if modo_set:
@@ -307,14 +311,14 @@ class JogoPalavrasUI(QMainWindow):
             self.lbl_status.setText(f"Parabéns! Você acertou: {self.jogo.palavra_atual.upper()}")
             self.lbl_status.setStyleSheet("color: #6aaa64;")
             self._desabilitar_entrada()
-            pontos = (self.pontos + (self.pontos/2)) - self.pontos
+            pontos = pontos + (self.pontos + (self.pontos/2)) - self.pontos
         elif self.tentativa_atual >= self.max_tentativas:
             self.derrotas += 1
             self.jogo_encerrado = True
             self.lbl_status.setText(f"Fim de jogo! A palavra era: {self.jogo.palavra_atual.upper()}")
             self.lbl_status.setStyleSheet("color: #ff6b6b;")
             self._desabilitar_entrada()
-            pontos = (self.pontos - (self.pontos/4)) - self.pontos
+            pontos = pontos + (self.pontos - (self.pontos/1.25)) - self.pontos
         else:
             restantes = self.max_tentativas - self.tentativa_atual
             self.lbl_status.setText(f"Tentativas restantes: {restantes}")

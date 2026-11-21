@@ -32,6 +32,7 @@ class JogoPalavrasUI(QMainWindow):
         self.titulo = "Termo"
         self.max_tentativas = max_tentativas
         self.pontos = 0
+        self.pontos_tentativa = 0
         self.vitorias = 0
         self.derrotas = 0
 
@@ -184,19 +185,12 @@ class JogoPalavrasUI(QMainWindow):
     def _atualizar_pontos(self, valor_add: int, modo_set: bool = False):
         old_pontos = self.pontos
 
-        if not modo_set:
-            self.pontos += valor_add
-        else:
-            self.pontos = valor_add
-
-        change = self.pontos - old_pontos
         ratio = self.vitorias / self.derrotas if self.derrotas > 0 else self.vitorias
 
-        if change > 0 and ratio >= 1:
-            if modo_set:
-                valor_add = change
-
+        if not modo_set:
             self.pontos += round(valor_add)
+        else:
+            self.pontos = valor_add
 
         string = f"Pontos: {self.pontos} ({self.vitorias}/{self.derrotas}) (Ratio: {ratio})"
         self.point_label.setText(string)
@@ -305,6 +299,7 @@ class JogoPalavrasUI(QMainWindow):
     def enviar_palpite(self):
         pontos = 1 * 10**(len(str(self.pontos))-1)
         tamanho = self.slider_dificuldade.value()
+        derrota = False
 
         print(f"Base: {pontos}")
         if self.jogo_encerrado or self.jogo is None:
@@ -347,12 +342,11 @@ class JogoPalavrasUI(QMainWindow):
             pontos = pontos + (self.pontos + (self.pontos / 2)) - self.pontos
         elif self.tentativa_atual >= self.max_tentativas:
             self.derrotas += 1
+            derrota = True
             self.jogo_encerrado = True
             self.lbl_status.setText(f"Fim de jogo! A palavra era: {self.jogo.palavra_atual.upper()}")
             self.lbl_status.setStyleSheet("color: #ff6b6b;")
             self._desabilitar_entrada()
-            pontos = pontos + (self.pontos - (self.pontos / 1.25)) - self.pontos
-            
         else:
             restantes = self.max_tentativas - self.tentativa_atual
             self.lbl_status.setText(f"Tentativas restantes: {restantes}")
@@ -361,8 +355,20 @@ class JogoPalavrasUI(QMainWindow):
         if erros >= tamanho:
             pontos = 0
 
+        self.pontos_tentativa += pontos
+
+        if derrota:
+            self._atualizar_pontos(round(pontos))
+            pontos = self.pontos - self.pontos_tentativa
+        
         print(f"Pontos: {pontos}")
-        self._atualizar_pontos(round(pontos))
+        print(f"Total: {self.pontos}")
+        print(f"Acoumulo: {self.pontos_tentativa}")
+
+        if self.jogo_encerrado:
+            self.pontos_tentativa = 0
+
+        self._atualizar_pontos(round(pontos), derrota) # Derrota age como o modo set.
 
     def _desabilitar_entrada(self):
         self.input_palpite.setEnabled(False)

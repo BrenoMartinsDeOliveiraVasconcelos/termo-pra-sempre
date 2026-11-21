@@ -307,7 +307,7 @@ class JogoPalavrasUI(QMainWindow):
                 celula.setStyleSheet(self._estilo_celula("#121213", "#3a3a3c"))
 
     def enviar_palpite(self):
-        pontos = 8 * (2 ** len(str(self.pontos)))
+        pontos = 1 * 10**(len(str(self.pontos))-1)
         tamanho = self.slider_dificuldade.value()
 
         print(f"Base: {pontos}")
@@ -362,8 +362,8 @@ class JogoPalavrasUI(QMainWindow):
             self.lbl_status.setText(f"Tentativas restantes: {restantes}")
             self.lbl_status.setStyleSheet("color: #d7dadc;")
 
-            if erros >= tamanho:
-                pontos = 0
+        if erros >= tamanho:
+            pontos = 0
 
         print(f"Pontos: {pontos}")
         self._atualizar_pontos(round(pontos))

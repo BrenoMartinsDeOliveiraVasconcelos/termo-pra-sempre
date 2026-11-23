@@ -35,6 +35,7 @@ class JogoPalavrasUI(QMainWindow):
         self.pontos_tentativa = 0
         self.vitorias = 0
         self.derrotas = 0
+        self.num_tentativas_vitoria = []
 
         self.jogo: Palavra | None = None
         self.tentativa_atual = 0
@@ -297,10 +298,12 @@ class JogoPalavrasUI(QMainWindow):
                 celula.setStyleSheet(self._estilo_celula("#121213", "#3a3a3c"))
 
     def enviar_palpite(self):
-        pontos = 1 * 10**(len(str(self.pontos))-1)
+        med_restante = (round(sum(self.num_tentativas_vitoria)/len(self.num_tentativas_vitoria)) if self.num_tentativas_vitoria else 1)
+        pontos = 8 ** med_restante
         tamanho = self.slider_dificuldade.value()
         derrota = False
 
+        print(f"Média: {med_restante}")
         print(f"Base: {pontos}")
         if self.jogo_encerrado or self.jogo is None:
             return
@@ -332,8 +335,10 @@ class JogoPalavrasUI(QMainWindow):
         self.tentativa_atual += 1
         self.input_palpite.clear()
 
+        restantes = self.max_tentativas - self.tentativa_atual
         # Verifica vitória ou fim das tentativas
         if all(status == 2 for status in resultado.values()):
+            self.num_tentativas_vitoria.append(restantes)
             self.vitorias += 1
             self.jogo_encerrado = True
             self.lbl_status.setText(f"Parabéns! Você acertou: {self.jogo.palavra_atual.upper()}")
@@ -348,7 +353,6 @@ class JogoPalavrasUI(QMainWindow):
             self.lbl_status.setStyleSheet("color: #ff6b6b;")
             self._desabilitar_entrada()
         else:
-            restantes = self.max_tentativas - self.tentativa_atual
             self.lbl_status.setText(f"Tentativas restantes: {restantes}")
             self.lbl_status.setStyleSheet("color: #d7dadc;")
 

@@ -192,7 +192,7 @@ class JogoPalavrasUI(QMainWindow):
         else:
             self.pontos = valor_add
 
-        string = f"Pontos: {self.pontos} ({self.vitorias}/{self.derrotas}) (Ratio: {ratio})"
+        string = f"Pontos: {self.pontos} ({self.vitorias}/{self.derrotas}) (Ratio: {ratio:.2f})"
         self.point_label.setText(string)
         print(f"Pontos: {self.pontos} -> MUdança: {self.pontos - old_pontos})")
 

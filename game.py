@@ -54,7 +54,7 @@ class Palavra():
         
 
     def get_palavra_aleatoria(self, tentativa: int=1) -> str:
-        helpers.console_log(f"Tentativa #{tentativa} de sortear palavra...", 0)
+        helpers.console_log(f"Procurando palavra... {tentativa}", 1)
         self.palavra_atual = random.choice(self.lista_palavras)
 
         try:

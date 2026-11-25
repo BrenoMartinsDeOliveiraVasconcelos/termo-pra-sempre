@@ -121,3 +121,104 @@ class Palavra():
             raise ValueError("A palavra não está na lista de palavras válidas.")
 
         return self.comparar_palavras(palavra)
+
+
+class ResultadoPalpite:
+    linha: int
+    palpite: str
+    status_letras: dict[int, int]
+    restantes: int
+    vitoria: bool
+    palavra_revelada: str | None
+
+
+class GameManager:
+    def __init__(
+        self,
+        arquivo_palavras: str = "lista.txt",
+        arquivo_cache: str = "cache.json",
+        max_tentativas: int = 6,
+    ):
+        if max_tentativas < 1:
+            raise ValueError("O jogo precisa permitir pelo menos uma tentativa.")
+
+        self.arquivo_palavras = arquivo_palavras
+        self.arquivo_cache = arquivo_cache
+        self.max_tentativas = max_tentativas
+        self.pontos = 0
+        self.vitorias = 0
+        self.derrotas = 0
+        self.tentativa_atual = 0
+        self._restantes_nas_vitorias: list[int] = []
+        self._pontos_rodada = 0.0
+        self._palavra: Palavra | None = None
+        self._encerrado = False
+
+    @property
+    def aceita_palpites(self) -> bool:
+        return self._palavra is not None and not self._encerrado
+
+    @property
+    def razao_vitorias_derrotas(self) -> float:
+        return self.vitorias / self.derrotas if self.derrotas else float(self.vitorias)
+
+    def iniciar_novo_jogo(self, tamanho: int):
+        self._palavra = None
+        self.tentativa_atual = 0
+        self._encerrado = False
+        self._pontos_rodada = 0.0
+
+        palavra = Palavra(self.arquivo_palavras, self.arquivo_cache, tamanho)
+        if not palavra.lista_palavras:
+            raise ValueError(
+                f"Nenhuma palavra com {tamanho} letras encontrada em '{self.arquivo_palavras}'."
+            )
+        palavra.get_palavra_aleatoria()
+        self._palavra = palavra
+
+    def enviar_palpite(self, texto: str) -> ResultadoPalpite:
+        palavra = self._palavra
+        if palavra is None or self._encerrado:
+            raise ValueError("Não há uma partida em andamento.")
+
+        palpite = texto.strip()
+        status_letras = palavra.chute(palpite)
+        linha = self.tentativa_atual
+        self.tentativa_atual += 1
+        restantes = self.max_tentativas - self.tentativa_atual
+        vitoria = all(status == 2 for status in status_letras.values())
+        derrota = restantes == 0 and not vitoria
+        self._encerrado = vitoria or derrota
+
+        self._pontuar(status_letras, vitoria, derrota)
+        if vitoria:
+            self._restantes_nas_vitorias.append(restantes)
+            self.vitorias += 1
+        elif derrota:
+            self.derrotas += 1
+
+        return ResultadoPalpite(
+            linha=linha,
+            palpite=palpite,
+            status_letras=status_letras,
+            restantes=restantes,
+            vitoria=vitoria,
+            palavra_revelada=palavra.palavra_atual if self._encerrado else None,
+        )
+
+    def _pontuar(self, status_letras: dict[int, int], vitoria: bool, derrota: bool):
+        historico = self._restantes_nas_vitorias
+        media_restantes = round(sum(historico) / len(historico)) if historico else 1
+        pontos = 8 ** media_restantes
+        peso_tentativa = self.max_tentativas / self.tentativa_atual
+        for status in status_letras.values():
+            pontos += 2 * status * peso_tentativa
+        if vitoria:
+            pontos = pontos + (self.pontos + self.pontos / 2) - self.pontos
+        if not any(status_letras.values()):
+            pontos = 0
+
+        self._pontos_rodada += pontos
+        self.pontos += round(pontos)
+        if derrota:
+            self.pontos = round(self.pontos - self._pontos_rodada)

@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from game import Palavra
+from game import GameManager
 
 
 class JogoPalavrasUI(QMainWindow):
@@ -27,19 +27,10 @@ class JogoPalavrasUI(QMainWindow):
 
     def __init__(self, arquivo_palavras: str = "lista.txt", max_tentativas: int = 6):
         super().__init__()
-        self.arquivo_palavras = arquivo_palavras
-        self.arquivo_cache = "cache.json"
         self.titulo = "Termo"
-        self.max_tentativas = max_tentativas
-        self.pontos = 0
-        self.pontos_tentativa = 0
-        self.vitorias = 0
-        self.derrotas = 0
-        self.num_tentativas_vitoria = []
-
-        self.jogo: Palavra | None = None
-        self.tentativa_atual = 0
-        self.jogo_encerrado = False
+        self.game = GameManager(
+            arquivo_palavras=arquivo_palavras, max_tentativas=max_tentativas
+        )
         self.celulas: list[list[QLabel]] = []
 
         self._configurar_janela()
@@ -158,7 +149,7 @@ class JogoPalavrasUI(QMainWindow):
         self.point_label.setFont(QFont("Segoe UI", 11, QFont.Weight.Normal))
         self.point_label.setMinimumHeight(28)
         self.layout_principal.addWidget(self.point_label)
-        self._atualizar_pontos(self.pontos)
+        self._atualizar_placar()
 
         # Área de entrada do palpite
         layout_entrada = QHBoxLayout()
@@ -183,19 +174,11 @@ class JogoPalavrasUI(QMainWindow):
         if not self.slider_dificuldade.isSliderDown():
             self.iniciar_novo_jogo()
 
-    def _atualizar_pontos(self, valor_add: int, modo_set: bool = False):
-        old_pontos = self.pontos
-
-        ratio = self.vitorias / self.derrotas if self.derrotas > 0 else self.vitorias
-
-        if not modo_set:
-            self.pontos += round(valor_add)
-        else:
-            self.pontos = valor_add
-
-        string = f"Pontos: {self.pontos} ({self.vitorias}/{self.derrotas}) (Ratio: {ratio:.2f})"
-        self.point_label.setText(string)
-        print(f"Pontos: {self.pontos} -> MUdança: {self.pontos - old_pontos})")
+    def _atualizar_placar(self):
+        self.point_label.setText(
+            f"Pontos: {self.game.pontos} ({self.game.vitorias}/{self.game.derrotas}) "
+            f"(Ratio: {self.game.razao_vitorias_derrotas:.2f})"
+        )
 
     def _construir_grade(self, tamanho_palavra: int):
         while self.layout_grade.count():
@@ -219,7 +202,7 @@ class JogoPalavrasUI(QMainWindow):
         tamanho_celula = max(26, min(tamanho_ideal, espaco_util // tamanho_palavra))
         tamanho_fonte = max(11, min(18, int(tamanho_celula * 0.38)))
 
-        for linha in range(self.max_tentativas):
+        for linha in range(self.game.max_tentativas):
             linha_celulas = []
             for coluna in range(tamanho_palavra):
                 celula = QLabel("")
@@ -241,16 +224,10 @@ class JogoPalavrasUI(QMainWindow):
         tamanho = self.slider_dificuldade.value()
 
         try:
-            self.jogo = Palavra(self.arquivo_palavras, self.arquivo_cache, tamanho)
-            if not self.jogo.lista_palavras:
-                raise ValueError(f"Nenhuma palavra com {tamanho} letras encontrada em '{self.arquivo_palavras}'.")
-            self.jogo.get_palavra_aleatoria()
-
-            self.tentativa_atual = 0
-            self.jogo_encerrado = False
+            self.game.iniciar_novo_jogo(tamanho)
             self._construir_grade(tamanho)
 
-            self.lbl_status.setText(f"Adivinhe a palavra de {tamanho} letras ({self.max_tentativas} tentativas).")
+            self.lbl_status.setText(f"Adivinhe a palavra de {tamanho} letras ({self.game.max_tentativas} tentativas).")
             self.lbl_status.setStyleSheet("color: #d7dadc;")
 
             self.input_palpite.clear()
@@ -283,11 +260,11 @@ class JogoPalavrasUI(QMainWindow):
         """
 
     def _atualizar_linha_digitacao(self, texto: str):
-        if self.jogo_encerrado or self.jogo is None:
+        if not self.game.aceita_palpites:
             return
 
         texto_upper = texto.upper()
-        linha = self.celulas[self.tentativa_atual]
+        linha = self.celulas[self.game.tentativa_atual]
 
         for i, celula in enumerate(linha):
             if i < len(texto_upper):
@@ -298,81 +275,38 @@ class JogoPalavrasUI(QMainWindow):
                 celula.setStyleSheet(self._estilo_celula("#121213", "#3a3a3c"))
 
     def enviar_palpite(self):
-        med_restante = (round(sum(self.num_tentativas_vitoria)/len(self.num_tentativas_vitoria)) if self.num_tentativas_vitoria else 1)
-        pontos = 8 ** med_restante
-        tamanho = self.slider_dificuldade.value()
-        derrota = False
-
-        print(f"Média: {med_restante}")
-        print(f"Base: {pontos}")
-        if self.jogo_encerrado or self.jogo is None:
+        if not self.game.aceita_palpites:
             return
 
-        palpite = self.input_palpite.text().strip()
-
         try:
-            resultado = self.jogo.chute(palpite)
+            resultado = self.game.enviar_palpite(self.input_palpite.text())
         except ValueError as erro:
             self.lbl_status.setText(str(erro))
             self.lbl_status.setStyleSheet("color: #ff6b6b;")
             return
 
-        # Pinta as células da tentativa realizada conforme o retorno de chute()
-        linha = self.celulas[self.tentativa_atual]
-        erros = 0
-        for indice, status in resultado.items():
+        linha = self.celulas[resultado.linha]
+        for indice, status in resultado.status_letras.items():
             cor = self.CORES_STATUS[status]
-
-            if status == 0:
-                erros += 1
-
-            linha[indice].setText(palpite[indice].upper())
+            linha[indice].setText(resultado.palpite[indice].upper())
             linha[indice].setStyleSheet(self._estilo_celula(cor, cor))
 
-            pontos = pontos + ((2 * status) * (self.max_tentativas / (self.tentativa_atual + 1)))
-            print(f"Pontos: {pontos}")
-
-        self.tentativa_atual += 1
         self.input_palpite.clear()
+        self._atualizar_placar()
 
-        restantes = self.max_tentativas - self.tentativa_atual
-        # Verifica vitória ou fim das tentativas
-        if all(status == 2 for status in resultado.values()):
-            self.num_tentativas_vitoria.append(restantes)
-            self.vitorias += 1
-            self.jogo_encerrado = True
-            self.lbl_status.setText(f"Parabéns! Você acertou: {self.jogo.palavra_atual.upper()}")
-            self.lbl_status.setStyleSheet("color: #6aaa64;")
-            self._desabilitar_entrada()
-            pontos = pontos + (self.pontos + (self.pontos / 2)) - self.pontos
-        elif self.tentativa_atual >= self.max_tentativas:
-            self.derrotas += 1
-            derrota = True
-            self.jogo_encerrado = True
-            self.lbl_status.setText(f"Fim de jogo! A palavra era: {self.jogo.palavra_atual.upper()}")
-            self.lbl_status.setStyleSheet("color: #ff6b6b;")
-            self._desabilitar_entrada()
-        else:
-            self.lbl_status.setText(f"Tentativas restantes: {restantes}")
+        if resultado.palavra_revelada is None:
+            self.lbl_status.setText(f"Tentativas restantes: {resultado.restantes}")
             self.lbl_status.setStyleSheet("color: #d7dadc;")
+            return
 
-        if erros >= tamanho:
-            pontos = 0
-
-        self.pontos_tentativa += pontos
-
-        if derrota:
-            self._atualizar_pontos(round(pontos))
-            pontos = self.pontos - self.pontos_tentativa
-        
-        print(f"Pontos: {pontos}")
-        print(f"Total: {self.pontos}")
-        print(f"Acoumulo: {self.pontos_tentativa}")
-
-        if self.jogo_encerrado:
-            self.pontos_tentativa = 0
-
-        self._atualizar_pontos(round(pontos), derrota) # Derrota age como o modo set.
+        palavra = resultado.palavra_revelada.upper()
+        if resultado.vitoria:
+            self.lbl_status.setText(f"Parabéns! Você acertou: {palavra}")
+            self.lbl_status.setStyleSheet("color: #6aaa64;")
+        else:
+            self.lbl_status.setText(f"Fim de jogo! A palavra era: {palavra}")
+            self.lbl_status.setStyleSheet("color: #ff6b6b;")
+        self._desabilitar_entrada()
 
     def _desabilitar_entrada(self):
         self.input_palpite.setEnabled(False)

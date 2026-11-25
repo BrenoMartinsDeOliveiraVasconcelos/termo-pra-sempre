@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
 )
 
 from game import GameManager
-from helpers import load_css, load_json
+from helpers import load_file, load_json, console_log
+
 
 class JogoPalavrasUI(QMainWindow):
     CORES_STATUS = load_json("theme/status.json")
@@ -35,7 +36,7 @@ class JogoPalavrasUI(QMainWindow):
 
     def _configurar_janela(self):
         self.setWindowTitle(self.titulo)
-        self.setStyleSheet(load_css("theme/style.css"))
+        self.setStyleSheet(load_file("theme/style.css"))
 
     def _ajustar_janela(self):
         self.layout_principal.activate()
@@ -267,6 +268,7 @@ class JogoPalavrasUI(QMainWindow):
 
 
 if __name__ == "__main__":
+    console_log("Modo debug ativado", 0)
     app = QApplication(sys.argv)
     janela = JogoPalavrasUI(arquivo_palavras="lista.txt", max_tentativas=6)
     janela.show()

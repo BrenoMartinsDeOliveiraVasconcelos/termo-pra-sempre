@@ -4,8 +4,9 @@ import helpers
 import requests
 import json
 import os
-import sys
+import traceback
 from dataclasses import dataclass
+
 
 class Palavra():
     def __init__(self, arquivo: str, cache: str, tamanho: int):
@@ -16,17 +17,12 @@ class Palavra():
         self.lista_palavras = self._carregar_palavras()
         self.lista_palavras_sa = [self._tirar_acentos(palavra) for palavra in self.lista_palavras]
 
-        print(sys.getsizeof(self.lista_palavras), sys.getsizeof(self.lista_palavras_sa))
-
         self._gerar_cache()
-
-        
 
     
     def _carregar_palavras(self):
         lista = open(self.arquivo, "r", encoding="utf-8").read().splitlines()
         l_palavras = [palavra.lower() for palavra in lista if len(self._tirar_acentos(palavra)) == self.tamanho]
-        print(f"Numero total: {len(l_palavras)}")
 
         return l_palavras
 
@@ -58,34 +54,35 @@ class Palavra():
         
 
     def get_palavra_aleatoria(self, tentativa: int=1) -> str:
-        print(f"Tentativa #{tentativa} de sortear palavra...")
+        helpers.console_log(f"Tentativa #{tentativa} de sortear palavra...", 0)
         self.palavra_atual = random.choice(self.lista_palavras)
 
         try:
             if self._verificar_cache(self.palavra_atual) is not None:
-                print("Encontrado no cache... ", end="")
+                helpers.check_debug("Encontrado no cache... ", 0)
                 is_substantivo = self._verificar_cache(self.palavra_atual)
                 if not is_substantivo:
-                    print("Inválido.")
+                    helpers.console_log("Inválido.", 0)
                     return self.get_palavra_aleatoria(tentativa=tentativa+1)
                 else:
-                    print("Válido.")
+                    helpers.console_log("Válido.", 0)
             else:
-                print("Não encontrado no cache. Checando na API...", end="")
+                helpers.console_log("Não encontrado no cache. Checando na API...", 0)
                 req = helpers.request(self.palavra_atual)
                 xml_list = helpers.get_xml_camp(req)
 
                 if not any(helpers.is_substantivo(xml) for xml in xml_list):
                     self._atualizar_cache(self.palavra_atual, False)
-                    print("Inválido.")
+                    helpers.console_log("Inválido.", 0)
                     return self.get_palavra_aleatoria(tentativa=tentativa+1)
                 else:
-                    print("Válido.")
+                    helpers.console_log("Válido.", 0)
                     self._atualizar_cache(self.palavra_atual, True)
         except (ConnectionError, requests.exceptions.RequestException):
-            print("Erro de conexão. Continuando com a palavra selecionada.")  # Se houver um erro de conexão, apenas continue com a palavra selecionada
-
-        print("Palavra sorteada com sucesso!")
+            helpers.console_log(f"Erro de conexão. Continuando com a palavra selecionada.", 1)  # Se houver um erro de conexão, apenas continue com a palavra selecionada
+            helpers.console_log(f"{traceback.format_exc()}", 2)
+            
+        helpers.console_log(f"Sorteado: {self.palavra_atual}", 0)
         return self.palavra_atual
 
 
@@ -114,7 +111,6 @@ class Palavra():
 
     def chute(self, palavra: str) -> dict:
         palavra = palavra.lower()
-        print(palavra, self._tirar_acentos(palavra), palavra in self.lista_palavras_sa, palavra in self.lista_palavras, palavra in self.lista_palavras_sa)
         if len(self._tirar_acentos(palavra)) != self.tamanho:
             raise ValueError(f"A palavra deve ter {self.tamanho} letras.")
 
@@ -213,6 +209,13 @@ class GameManager:
         media_restantes = round(sum(historico) / len(historico)) if historico else 1
         pontos = 8 ** media_restantes
         peso_tentativa = self.max_tentativas / self.tentativa_atual
+
+        helpers.console_log(f"Pontuação base: {pontos}", 1)
+        helpers.console_log(f"Peso da tentativa: {peso_tentativa}", 1)
+        helpers.console_log(f"Status das letras: {status_letras}", 1)
+        helpers.console_log(f"Vitoria: {vitoria}, Derrota: {derrota}", 1)
+        helpers.console_log(f"Media de restantes nas vitorias: {media_restantes}", 1)
+        
         for status in status_letras.values():
             pontos += 2 * status * peso_tentativa
         if vitoria:
@@ -224,3 +227,7 @@ class GameManager:
         self.pontos += round(pontos)
         if derrota:
             self.pontos = round(self.pontos - self._pontos_rodada)
+
+        helpers.console_log(f"Pontos desta rodada: {round(self._pontos_rodada)}", 1)
+        helpers.console_log(f"Pontos da tentativa: {round(pontos)}", 1)
+        helpers.console_log(f"Pontos totais: {self.pontos}", 1)

@@ -16,14 +16,10 @@ from PySide6.QtWidgets import (
 )
 
 from game import GameManager
-
+from helpers import load_css, load_json
 
 class JogoPalavrasUI(QMainWindow):
-    CORES_STATUS = {
-        2: "#538d4e",  # Verde: letra e posição corretas
-        1: "#b59f3b",  # Amarelo: letra existe, posição errada
-        0: "#3a3a3c",  # Cinza: letra não existe na palavra
-    }
+    CORES_STATUS = load_json("theme/status.json")
 
     def __init__(self, arquivo_palavras: str = "lista.txt", max_tentativas: int = 6):
         super().__init__()
@@ -39,50 +35,7 @@ class JogoPalavrasUI(QMainWindow):
 
     def _configurar_janela(self):
         self.setWindowTitle(self.titulo)
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #121213;
-            }
-            QLabel {
-                color: #ffffff;
-            }
-            QLineEdit, QPushButton {
-                background-color: #272729;
-                color: #ffffff;
-                border: 1px solid #565758;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #3a3a3c;
-            }
-            QPushButton:disabled, QLineEdit:disabled {
-                background-color: #1a1a1b;
-                color: #6e6e70;
-                border-color: #3a3a3c;
-            }
-            QSlider::groove:horizontal {
-                height: 6px;
-                background: #3a3a3c;
-                border-radius: 3px;
-            }
-            QSlider::sub-page:horizontal {
-                background: #538d4e;
-                border-radius: 3px;
-            }
-            QSlider::handle:horizontal {
-                background: #ffffff;
-                border: 1px solid #565758;
-                width: 16px;
-                height: 16px;
-                margin: -5px 0;
-                border-radius: 8px;
-            }
-            QSlider::handle:horizontal:hover {
-                background: #d7dadc;
-            }
-        """)
+        self.setStyleSheet(load_css("theme/style.css"))
 
     def _ajustar_janela(self):
         self.layout_principal.activate()
@@ -287,7 +240,7 @@ class JogoPalavrasUI(QMainWindow):
 
         linha = self.celulas[resultado.linha]
         for indice, status in resultado.status_letras.items():
-            cor = self.CORES_STATUS[status]
+            cor = self.CORES_STATUS[str(status)]
             linha[indice].setText(resultado.palpite[indice].upper())
             linha[indice].setStyleSheet(self._estilo_celula(cor, cor))
 

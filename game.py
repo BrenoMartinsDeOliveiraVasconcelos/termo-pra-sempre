@@ -5,6 +5,7 @@ import requests
 import json
 import os
 import sys
+from dataclasses import dataclass
 
 class Palavra():
     def __init__(self, arquivo: str, cache: str, tamanho: int):
@@ -123,6 +124,7 @@ class Palavra():
         return self.comparar_palavras(palavra)
 
 
+@dataclass(frozen=True)
 class ResultadoPalpite:
     linha: int
     palpite: str

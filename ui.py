@@ -120,7 +120,26 @@ class JogoPalavrasUI(QMainWindow):
         self.btn_enviar.clicked.connect(self.enviar_palpite)
         layout_entrada.addWidget(self.btn_enviar)
 
+        self.btn_dica = QPushButton()
+        self.btn_dica.clicked.connect(self.usar_dica)
+        layout_entrada.addWidget(self.btn_dica)
+        self._atualizar_botao_dica()
+
         self.layout_principal.addLayout(layout_entrada)
+
+    def _atualizar_botao_dica(self):
+        self.btn_dica.setText(f"Dica ({self.game.dicas} disponíveis)")
+        self.btn_dica.setEnabled(self.game.pode_usar_dica)
+
+    def usar_dica(self):
+        dica = self.game.usar_dica()
+        if dica is not None:
+            indice, letra = dica
+            self.lbl_status.setText(f"Dica: {letra.upper()} na posição {indice + 1}.")
+            self.lbl_status.setStyleSheet("color: #6aaa64;")
+            self._atualizar_botao_dica()
+            self._atualizar_linha_digitacao(self.input_palpite.text())
+            self.input_palpite.setFocus()
 
     def _ao_mover_slider(self, valor: int):
         self.lbl_valor_letras.setText(str(valor))
@@ -130,8 +149,8 @@ class JogoPalavrasUI(QMainWindow):
 
     def _atualizar_placar(self):
         self.point_label.setText(
-            f"Pontos: {self.game.pontos} ({self.game.vitorias}/{self.game.derrotas}) "
-            f"(Ratio: {self.game.razao_vitorias_derrotas:.2f})"
+            f"Pontos: {self.game.pontos} | Nível: {self.game.checar_nivel()} | Razão: {self.game.vitorias}/{self.game.derrotas} "
+            f"({self.game.razao_vitorias_derrotas:.2f})"
         )
 
     def _construir_grade(self, tamanho_palavra: int):
@@ -172,6 +191,7 @@ class JogoPalavrasUI(QMainWindow):
         texto_original = "Novo Jogo"
         self.btn_novo_jogo.setEnabled(False)
         self.slider_dificuldade.setEnabled(False)
+        self.btn_dica.setEnabled(False)
         self.btn_novo_jogo.setText("Aguarde")
         QApplication.processEvents()  # Força a atualização visual antes do carregamento
 
@@ -199,6 +219,7 @@ class JogoPalavrasUI(QMainWindow):
             self.btn_novo_jogo.setEnabled(True)
             self.slider_dificuldade.setEnabled(True)
             self.btn_novo_jogo.setText(texto_original)
+            self._atualizar_botao_dica()
 
         QTimer.singleShot(0, self._ajustar_janela)
 
@@ -221,9 +242,13 @@ class JogoPalavrasUI(QMainWindow):
         linha = self.celulas[self.game.tentativa_atual]
 
         for i, celula in enumerate(linha):
+            letra_revelada = self.game.letra_revelada(i).upper()
             if i < len(texto_upper):
                 celula.setText(texto_upper[i])
                 celula.setStyleSheet(self._estilo_celula("#121213", "#818384"))
+            elif letra_revelada:
+                celula.setText(letra_revelada)
+                celula.setStyleSheet(self._estilo_celula("#121213", self.CORES_STATUS["2"]))
             else:
                 celula.setText("")
                 celula.setStyleSheet(self._estilo_celula("#121213", "#3a3a3c"))
@@ -246,7 +271,9 @@ class JogoPalavrasUI(QMainWindow):
             linha[indice].setStyleSheet(self._estilo_celula(cor, cor))
 
         self.input_palpite.clear()
+        self._atualizar_linha_digitacao("")
         self._atualizar_placar()
+        self._atualizar_botao_dica()
 
         if resultado.palavra_revelada is None:
             self.lbl_status.setText(f"Tentativas restantes: {resultado.restantes}")

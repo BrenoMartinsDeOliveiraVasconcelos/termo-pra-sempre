@@ -59,7 +59,7 @@ class Palavra():
 
         try:
             if self._verificar_cache(self.palavra_atual) is not None:
-                helpers.check_debug("Encontrado no cache... ", 0)
+                helpers.console_log("Encontrado no cache... ", 0)
                 is_substantivo = self._verificar_cache(self.palavra_atual)
                 if not is_substantivo:
                     helpers.console_log("Inválido.", 0)
@@ -144,8 +144,13 @@ class GameManager:
         self.arquivo_cache = arquivo_cache
         self.max_tentativas = max_tentativas
         self.pontos = 0
+        self.nivel = 1
+        self.nivel_anterior = 1
+        self.acumulo_nivel_vitoria = 0
         self.vitorias = 0
         self.derrotas = 0
+        self.dicas = 0
+        self._letras_reveladas: dict[int, str] = {}
         self.tentativa_atual = 0
         self._restantes_nas_vitorias: list[int] = []
         self._pontos_rodada = 0.0
@@ -160,8 +165,18 @@ class GameManager:
     def razao_vitorias_derrotas(self) -> float:
         return self.vitorias / self.derrotas if self.derrotas else float(self.vitorias)
 
+    def checar_nivel(self) -> int:
+        a_nivel = self.pontos // 100 + 1
+        if a_nivel > self.nivel:
+            self.acumulo_nivel_vitoria += (a_nivel - self.nivel)
+            self.nivel_anterior = self.nivel
+            self.nivel = a_nivel
+            
+        return self.nivel
+
     def iniciar_novo_jogo(self, tamanho: int):
         self._palavra = None
+        self._letras_reveladas.clear()
         self.tentativa_atual = 0
         self._encerrado = False
         self._pontos_rodada = 0.0
@@ -173,6 +188,32 @@ class GameManager:
             )
         palavra.get_palavra_aleatoria()
         self._palavra = palavra
+
+    @property
+    def pode_usar_dica(self) -> bool:
+        palavra = self._palavra
+        return (
+            palavra is not None
+            and not self._encerrado
+            and self.dicas > 0
+            and len(self._letras_reveladas) < palavra.tamanho
+        )
+
+    def letra_revelada(self, indice: int) -> str:
+        return self._letras_reveladas.get(indice, "")
+
+    def usar_dica(self) -> tuple[int, str] | None:
+        palavra = self._palavra
+        if palavra is None or not self.pode_usar_dica:
+            return None
+
+        letras = palavra._tirar_acentos(palavra.palavra_atual)
+        indice = random.choice(
+            [i for i in range(len(letras)) if i not in self._letras_reveladas]
+        )
+        self._letras_reveladas[indice] = letras[indice]
+        self.dicas -= 1
+        return indice, letras[indice]
 
     def enviar_palpite(self, texto: str) -> ResultadoPalpite:
         palavra = self._palavra
@@ -189,12 +230,17 @@ class GameManager:
         self._encerrado = vitoria or derrota
 
         self._pontuar(status_letras, vitoria, derrota)
+        nivel = self.checar_nivel()
         if vitoria:
             self._restantes_nas_vitorias.append(restantes)
             self.vitorias += 1
+            if nivel > self.nivel_anterior:
+                self.dicas += self.acumulo_nivel_vitoria + 1
+                self.acumulo_nivel_vitoria = 0
         elif derrota:
             self.derrotas += 1
 
+        helpers.console_log(f"Nível atual: {nivel}, Nível anterior: {self.nivel_anterior}, Acúmulo: {self.acumulo_nivel_vitoria}", 0)
         return ResultadoPalpite(
             linha=linha,
             palpite=palpite,
